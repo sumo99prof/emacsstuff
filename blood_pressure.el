@@ -17,31 +17,30 @@
 (blood-pressure 85 130) ;; => "pre hypertension"
 (blood-pressure 50 170)
 
- #||
-Original python implementation for reference
+;Original python implementation for reference
 
-# Online Python - IDE, Editor, Compiler, Interpreter
-if diastolic <= 60:
-	if systolic <= 90:
-		print("Low blood pressure")
-	elif systolic <= 120:
-		print("Ideal blood pressure")
-	elif systolic <= 140:
-		print("Pre high blood pressure")
-	else:
-		print("High blood pressure") 
-elif diastolic <= 80:
-	if systolic <= 120:
-		print("Ideal blood pressure")
-	elif systolic <= 140:
-		print("Pre high blood pressure")
-	else:
-		print("High Blood Pressure")
-elif diastolic <= 90:
-    if systolic >= 140:
-        print("High blood pressure")
-    else:
-        print("Pre high blood pressure")
-else:
-    print("High blood pressure")
-||#
+;# Online Python - IDE, Editor, Compiler, Interpreter
+;if diastolic <= 60:
+;	if systolic <= 90:
+;		print("Low blood pressure")
+;	elif systolic <= 120:
+;		print("Ideal blood pressure")
+;	elif systolic <= 140:
+;		print("Pre high blood pressure")
+;	else:
+;		print("High blood pressure") 
+;elif diastolic <= 80:
+;	if systolic <= 120:
+;		print("Ideal blood pressure")
+;	elif systolic <= 140:
+;		print("Pre high blood pressure")
+;	else:
+;		print("High Blood Pressure")
+;elif diastolic <= 90:
+;    if systolic >= 140:
+;        print("High blood pressure")
+;    else:
+;        print("Pre high blood pressure")
+;else:
+ ;   print("High blood pressure")
+
