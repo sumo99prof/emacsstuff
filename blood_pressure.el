@@ -7,7 +7,7 @@
     (100 160 "high stage 1 hypertension")
     (120 190 "high stage 2 hypertension")))
 
-(defun blood-pressure (diastolic systolic)
+(defun blood-pressure &optional(diastolic systolic)
   (cl-loop for (a b type) in ranges
            when (and (<= diastolic a) (<= systolic b))
              return type))
