@@ -1,9 +1,12 @@
 (deftype sprite () '(member :X :O :0))
+
 (defvar *move-number* 0)
-(defvar *game-board* (make-array '(6 7) :initial-element 0))
-(defvar *col-count* (array-dimension *game-board* 0))
-(defvar *row-count* (array-dimension *game-board* 1))
+(defparameter *game-board* (make-array '(6 7) :initial-element 0))
+(defparameter *col-count* (array-dimension *game-board* 0))
+(defparameter *row-count* (array-dimension *game-board* 1))
 (defvar *win-threshold* 4)
+(ql:quickload :array-operations)
+
 
 (defun can-drop-column (col-num)
   (let* ((col-elements (loop for i below *col-count* collect (aref *game-board* i col-num))))
@@ -27,21 +30,19 @@
         (eq max-streak maxnum)))
   
 (defun check-win-vert-horiz ()
-  (let* ((winner-list '(nil)))
+  (let* ((winner nil))
     (loop for col-num below *row-count* do
           (let ((col-elements (loop for i below *col-count* collect (aref *game-board* i col-num))))
-            (princ col-elements)
-            (when (= *win-threshold* (count 'X col-elements))
-              (push 'X (car winner-list)))
-            (when (= *win-threshold* (count 'O col-elements))
-              (push 'O (car winner-list)))
-            ))
-    (loop for col-num below *row-count* do
-          (let ((col-elements (loop for i below *col-count* collect (aref *game-board* i col-num))))
-            (when (= *win-threshold* (count 'X col-elements))
-              (push 'X (car winner-list)))
-            (when (= *win-threshold* (count 'O col-elements))
-              (push 'O (car winner-list)))))))
+            (when (check-maxnum-in-row col-elements 'X *win-threshold*)
+              (setf 'X winner))
+            (when (check-maxnum-in-row col-elements 'O *win-threshold*)
+              (setf 'O winner)))))
+    (loop for col-num below *col-count* do
+          (let ((row-elements (loop for i below *row-count* collect (aref *game-board* i col-num))))
+            (when (check-maxnum-in-row row-elements 'X *win-threshold*)
+              (setf 'X winner))
+            (when (check-maxnum-in-row row-elements 'O *win-threshold*)
+              (setf 'O winner)))))
 
 (defun drop-in-col (col-num player-symbol)
   (let* ((col-elements (loop for i below *col-count* collect (aref *game-board* i col-num)))
@@ -53,3 +54,32 @@
 
 (defun random-move ()
   (incf *move-number*))
+
+(defun init-game-board ()
+
+  )
+
+(defun game-loop ()
+  (princ "Which row to drop into? ")
+  (princ "Valid ones are ")
+  (princ (remove-if-not #'can-drop-column (loop for n below *row-count* collect n))) 
+  (drop-in-col 1 :X)
+  (incf *move-number*))
+
+;; https://www.geeksforgeeks.org/zigzag-or-diagonal-traversal-of-matrix/
+(defun diagonal-order-pos (matrix row col)
+  (loop for line from 1 below (+ row col)
+        collect
+        (let* ((start-col (max 0 (- line row)))
+               (element-count (min line (- col start-col) row)))
+          (loop for j from 0 below element-count
+                collect (aref matrix (- (- (min row line) j) 1) (+ start-col j))))))
+;;todo later
+(defun diagonal-order-neg (matrix row col)
+  (loop for line from 1 below (+ row col)
+        collect
+        (let* ((start-col (max 0 (- line row)))
+               (element-count (min line (- col start-col) row)))
+          (loop for j from 0 below element-count
+                collect (aref matrix (- (- (min row line) j) 1) (+ start-col j))))))
+
