@@ -7,10 +7,11 @@
 (defvar *win-threshold* 4)
 (ql:quickload :array-operations)
 
-
+;;Thanks grolter
 (defun can-drop-column (col-num)
-  (let* ((col-elements (loop for i below *col-count* collect (aref *game-board* i col-num))))
-    (> (loop :for element :in col-elements :counting 0) 0)))
+  (loop for i below *col-count*
+        for element = (aref *game-board* i col-num)
+        thereis (zerop element)))
 
 (defun set-column (array col-index new-column)
   (dotimes (i (array-dimension array 0))
@@ -74,12 +75,26 @@
                (element-count (min line (- col start-col) row)))
           (loop for j from 0 below element-count
                 collect (aref matrix (- (- (min row line) j) 1) (+ start-col j))))))
-;;todo later
+
+;;this is fairly complicated, will need to be tested well
 (defun diagonal-order-neg (matrix row col)
   (loop for line from 1 below (+ row col)
         collect
         (let* ((start-col (max 0 (- line row)))
-               (element-count (min line (- col start-col) row)))
+               (values-to-check (list (- (+ row col) line)
+                                      (- row (- line 1))
+                                      (- col start-col)
+                                      row))
+               (non-negative-values (remove-if-not #'plusp values-to-check))
+               (element-count (apply #'min non-negative-values))
+               (updated-row (if (> start-col 0) 1 row)))
           (loop for j from 0 below element-count
-                collect (aref matrix (- (- (min row line) j) 1) (+ start-col j))))))
+                collect (aref matrix (- (+ (min updated-row line) j) 1) (+ start-col j))))))
 
+;; This will be put in a separate testing file
+(defun generate-matrix (rows cols)
+  (make-array (list rows cols)
+              :initial-contents
+              (loop for i below rows
+                    collect (loop for j below cols
+                                  collect (+ (* i cols) j)))))
