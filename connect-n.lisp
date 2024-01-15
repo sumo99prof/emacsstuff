@@ -65,7 +65,8 @@
   (princ "Valid ones are ")
   (princ (remove-if-not #'can-drop-column (loop for n below *row-count* collect n))) 
   (drop-in-col 1 :X)
-  (incf *move-number*))
+  (incf *move-number*)
+  (game-loop))
 
 ;; https://www.geeksforgeeks.org/zigzag-or-diagonal-traversal-of-matrix/
 (defun diagonal-order-pos (matrix row col)
