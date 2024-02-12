@@ -1,11 +1,9 @@
-(deftype sprite () '(member :X :O :0))
-
 (defvar *move-number* 0)
 (defparameter *game-board* (make-array '(6 7) :initial-element 0))
 (defparameter *col-count* (array-dimension *game-board* 0))
 (defparameter *row-count* (array-dimension *game-board* 1))
 (defvar *win-threshold* 4)
-(ql:quickload :array-operations)
+(defpackage :connect-n (:use :cl))
 
 ;;Thanks grolter
 (defun can-drop-column (col-num)
@@ -31,7 +29,8 @@
         (eq max-streak maxnum)))
   
 (defun check-win-vert-horiz ()
-  (let* ((winner nil))
+  (let* ((winner nil)
+         (positive-diagonal (diagonal-order-pos *game-board* *row-count* *col-count*)))
     (loop for col-num below *row-count* do
           (let ((col-elements (loop for i below *col-count* collect (aref *game-board* i col-num))))
             (when (check-maxnum-in-row col-elements 'X *win-threshold*)
@@ -53,20 +52,25 @@
       (set-column *game-board* col-num col-elements)
       (princ *game-board*))))
 
+(defun input (prompt)
+  (princ prompt)
+  (terpri)
+  (read))
+
 (defun random-move ()
-  (incf *move-number*))
+  (incf *move-number*)
+  ())
 
 (defun init-game-board ()
-
-  )
+  (princ "How many rows and columns do you desire? ")
+  (let ((win-threshold (input "What is the win threshold (must be at least 3 in a row)")))))
 
 (defun game-loop ()
   (princ "Which row to drop into? ")
   (princ "Valid ones are ")
   (princ (remove-if-not #'can-drop-column (loop for n below *row-count* collect n))) 
   (drop-in-col 1 :X)
-  (incf *move-number*)
-  (game-loop))
+  (incf *move-number*))
 
 ;; https://www.geeksforgeeks.org/zigzag-or-diagonal-traversal-of-matrix/
 (defun diagonal-order-pos (matrix row col)
@@ -82,20 +86,9 @@
   (loop for line from 1 below (+ row col)
         collect
         (let* ((start-col (max 0 (- line row)))
-               (values-to-check (list (- (+ row col) line)
-                                      (- row (- line 1))
-                                      (- col start-col)
-                                      row))
+               (values-to-check (list (- (+ row col) line) (- row (- line 1)) (- col start-col) row))
                (non-negative-values (remove-if-not #'plusp values-to-check))
                (element-count (apply #'min non-negative-values))
                (updated-row (if (> start-col 0) 1 row)))
           (loop for j from 0 below element-count
                 collect (aref matrix (- (+ (min updated-row line) j) 1) (+ start-col j))))))
-
-;; This will be put in a separate testing file
-(defun generate-matrix (rows cols)
-  (make-array (list rows cols)
-              :initial-contents
-              (loop for i below rows
-                    collect (loop for j below cols
-                                  collect (+ (* i cols) j)))))
