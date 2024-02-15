@@ -55,15 +55,22 @@
 (defun input (prompt)
   (princ prompt)
   (terpri)
-  (read))
+  (let ((curr-input (read)))
+    (if (numberp curr-input)
+        curr-input
+        (if (or (string= "QUIT" curr-input) (string= "EXIT" curr-input))
+            (progn (princ "Bye") (cl-user::quit))
+            (progn (princ "Enter a number, 'quit', or 'exit' please") (input ""))))))
 
 (defun random-move ()
   (incf *move-number*)
   ())
 
 (defun init-game-board ()
-  (princ "How many rows and columns do you desire? ")
-  (let ((win-threshold (input "What is the win threshold (must be at least 3 in a row)")))))
+  (let* ((rows (input "How many rows do you desire?"))
+         (cols (input "How many columns do you desire?"))
+         (max-win-input (1- (min rows cols)))
+         (win-threshold (input (format nil "What is the win threshold (must be at least 3 and at most ~a in a row)?" max-win-input))))))
 
 (defun game-loop ()
   (princ "Which row to drop into? ")
