@@ -9,7 +9,7 @@
 (defun can-drop-column (col-num)
   (loop for i below *col-count*
         for element = (aref *game-board* i col-num)
-        thereis (zerop element)))
+        thereis (equal element 0)))
 
 (defun set-column (array col-index new-column)
   (dotimes (i (array-dimension array 0))
@@ -47,10 +47,9 @@
 (defun drop-in-col (col-num player-symbol)
   (let* ((col-elements (loop for i below *col-count* collect (aref *game-board* i col-num)))
          (zero-elem (position 0 col-elements :from-end t)))
-    (progn
+    (prognf
       (setf (elt col-elements zero-elem) player-symbol)
-      (set-column *game-board* col-num col-elements)
-      (princ *game-board*))))
+      (set-column *game-board* col-num col-elements))))
 
 (defun input (prompt)
   (princ prompt)
@@ -66,18 +65,32 @@
   (incf *move-number*)
   ())
 
+(defun game-loop ()
+  (princ "Which row to drop into? ")
+  (princ "Valid ones are ")
+  (princ (remove-if-not #'can-drop-column (loop for n below *row-count* collect n)))
+  (if (evenp *move-number*)
+      (drop-in-col 1 :X)
+      (drop-in-col 1 :O))
+  (incf *move-number*)
+  (game-loop))
+
 (defun init-game-board ()
   (let* ((rows (input "How many rows do you desire?"))
          (cols (input "How many columns do you desire?"))
          (max-win-input (1- (min rows cols)))
-         (win-threshold (input (format nil "What is the win threshold (must be at least 3 and at most ~a in a row)?" max-win-input))))))
+         (win-threshold (input (format nil "What is the win threshold (must be at least 3 and at most ~a in a row)?" max-win-input))))
+    (if (and (>= max-win-input 3) (<= win-threshold max-win-input))
+        (progn
+          (setq *game-board* (make-array (list rows cols) :initial-element 0))
+          (defparameter *col-count* (array-dimension *game-board* 0))
+          (defparameter *row-count* (array-dimension *game-board* 1))
+          (defvar *win-threshold* win-threshold)
+          (game-loop))
+        (progn
+          (princ "Incorrect number entered for the win threshold.")
+          (init-game-board)))))
 
-(defun game-loop ()
-  (princ "Which row to drop into? ")
-  (princ "Valid ones are ")
-  (princ (remove-if-not #'can-drop-column (loop for n below *row-count* collect n))) 
-  (drop-in-col 1 :X)
-  (incf *move-number*))
 
 ;; https://www.geeksforgeeks.org/zigzag-or-diagonal-traversal-of-matrix/
 (defun diagonal-order-pos (matrix row col)
