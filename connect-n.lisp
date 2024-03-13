@@ -12,6 +12,9 @@
         for element = (aref *game-board* i col-num)
         thereis (equal element "-")))
 
+(defun pop-checker (col-num move-number)
+  )
+
 ;set column and return true if no errors
 (defun set-column (array col-index new-column)
   (dotimes (i (array-dimension array 0))
@@ -21,10 +24,10 @@
 (defun check-maxnum-in-row (elements curr-sym maxnum)
   (unless (< (list-length elements) maxnum)
   (let ((max-streak 0))
-         (let ((current-streak 0))
+    (let ((current-streak 0))
          (loop for i from 0 to (1- (length elements)) do
                (let ((current (nth i elements)))
-               (if (eql current curr-sym)
+               (if (equal current curr-sym)
                  (progn
                    (incf current-streak)
                    (setf max-streak (max current-streak max-streak)))
@@ -38,29 +41,29 @@
         append sublist))
 
 (defun populate-winner-list (winner-list symbol-list element-list)
-  (loop for value in element-list
+  (loop for element in element-list
         do (push (loop for checker in symbol-list
-                       collect (check-maxnum-in-row value checker *win-threshold*))
-                 winner-list)))
+                       collect (check-maxnum-in-row element checker *win-threshold*))
+                 winner-list))
+  winner-list)
 
 (defun check-win-vert-horiz ()
-     (let* ((winner nil)
-            (pos-diagonal (diagonal-order-pos *game-board* *row-count* *col-count*))
-            (neg-diagonal (diagonal-order-neg *game-board* *row-count* *col-count*)))
-       (populate-winner-list winner *piece-names* pos-diagonal)
-       (populate-winner-list winner *piece-names* neg-diagonal) 
-       (loop for col-num below *col-count* do
-             (let ((col-elements (loop for i below *row-count* collect (aref *game-board* i col-num))))
-               (push (loop for checker in *piece-names*
-                           collect (check-maxnum-in-row col-elements checker *win-threshold*))
-                     winner)))
-       (loop for row-num below *row-count* do
-             (let ((row-elements (loop for i below *row-count* collect (aref *game-board* row-num i))))
-               (push (loop for checker in *piece-names*
-                           collect (check-maxnum-in-row row-elements checker *win-threshold*))
-                     winner)))
-       winner))
-
+  (let* ((winner nil)
+         (pos-diagonal (diagonal-order-pos *game-board* *row-count* *col-count*))
+         (neg-diagonal (diagonal-order-neg *game-board* *row-count* *col-count*))
+         (winner (populate-winner-list nil *piece-names* neg-diagonal)))
+    (setq winner (populate-winner-list winner *piece-names* pos-diagonal))
+    (loop for col-num below *col-count* do
+          (let ((col-elements (loop for i below *row-count* collect (aref *game-board* i col-num))))
+            (push (loop for checker in *piece-names*
+                        collect (check-maxnum-in-row col-elements checker *win-threshold*))
+                  winner)))
+    (loop for row-num below *row-count* do
+          (let ((row-elements (loop for i below *row-count* collect (aref *game-board* row-num i))))
+            (push (loop for checker in *piece-names*
+                        collect (check-maxnum-in-row row-elements checker *win-threshold*))
+                  winner)))
+    winner))
 
 (defun drop-in-col (col-num player-symbol)
   (let* ((col-elements (loop for i below *row-count* collect (aref *game-board* i col-num)))
@@ -135,6 +138,9 @@
                (values-to-check (list (- (+ row col) line) (- row (- line 1)) (- col start-col) row))
                (non-negative-values (remove-if-not #'plusp values-to-check))
                (element-count (apply #'min non-negative-values))
+               (updated-row (if (> start-col 0) 1 row)))
+          (loop for j from 0 below element-count
+                collect (aref matrix (- (+ (min updated-row line) j) 1) (+ start-col j))))))
                (updated-row (if (> start-col 0) 1 row)))
           (loop for j from 0 below element-count
                 collect (aref matrix (- (+ (min updated-row line) j) 1) (+ start-col j))))))
