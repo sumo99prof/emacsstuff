@@ -5,8 +5,15 @@
 (defparameter *col-count* (array-dimension *game-board* 1))
 (defparameter *win-threshold* 4)
 (defparameter *computer-first* t)
+(defparameter *has-human* t)
 (ql:quickload :array-operations)
 (defpackage :connect-n (:use :cl))
+
+(defun get-row (row-num)
+  (loop for i from (* *col-count* row-num) to (+ (* *col-count* row-num) (- *col-count* 1))
+        collect (row-major-aref *game-board* i)))
+
+(defun get-col (col-num) ())
 
 ;;Thanks grolter
 (defun can-drop-column (col-num)
@@ -20,6 +27,7 @@
         thereis (equal element "-")))
 
 (defun pop-checker (col-num move-number)
+  (if (evenp move-number) () ())
   )
 
 (defun repeat-element (element count)
@@ -40,40 +48,45 @@
 
 (defun search-all (subseq seq curr-seq-pos matches)
   "This function returns a list of all positions where subseq appears in seq."
-  (unless (>= (length seq) (length subseq))  ;base case
+  (unless (and (>= (length seq) (length subseq)) (search subseq seq))  ;base case
     (return-from search-all matches))
   (let ((subseq-length (length subseq))   
         (subseq-position (search subseq seq))) 
     (when subseq-position
       (if matches ;when match is null, we have the first match, else accumulate
-          (progn (setf curr-seq-pos (+ subseq-position subseq-length curr-seq-pos))
-                  (push curr-seq-pos matches))
-                  (push subseq-position matches)))
-      (search-all subseq                    
-                  (subseq seq (+ subseq-position subseq-length)) curr-seq-pos
-                  matches)))
+          (progn 
+            (setf curr-seq-pos (+ subseq-position subseq-length curr-seq-pos))
+            (push curr-seq-pos matches))
+          (push subseq-position matches)))
+    (search-all subseq                    
+                (subseq seq (+ subseq-position subseq-length)) curr-seq-pos
+                matches)))
 
 (defun random-move-easy ()
   "The goal of this AI is to randomly drop a piece in a column, avoiding immediate vertical or horizontal threats of four in a row."
   (let* ((win-minus-one (- *win-threshold* 1))
-         (all-possible-cols (remove-if-not #'can-drop-column (loop for n below *col-count* collect n)))
          (human-opp-sym (if *computer-first* "O" "X"))
          (n-minus-one (repeat-element human-opp-sym win-minus-one))
          (n-row-column (positions human-opp-sym (flatten (cdr (assoc :columns (check-win-vert-horiz win-minus-one)))) :test #'equal))
          (n-row-row (positions human-opp-sym (flatten (cdr (assoc :rows (check-win-vert-horiz win-minus-one)))) :test #'equal))
          (n-row-column (mapcar (lambda (x) (floor (/ x 2))) n-row-column))
          (n-row-row (mapcar (lambda (x) (floor (/ x 2))) n-row-row))
-         (valid-col-threats (intersection all-possible-cols n-row-column))  ; New variable name
-         (forced-move '()))  ; Move forced-move declaration before using it
+         (valid-col-threats (remove-if-not #'can-drop-column n-row-column))
+         (valid-row-threats (remove-if-not #'row-has-space n-row-row))
+         (forced-move '()))
     (when valid-col-threats
       (loop for column in valid-col-threats
             do (let* ((col-elements (get-column *game-board* column))
-                      (leftmost-empty (+ (position "-" col-elements :from-end t :test #'equal) 1))
-                      (rightmost-threat (+ leftmost-empty win-minus-one)) ;only the last three elements matter
-                      )
-                 (when (equal n-minus-one (subseq col-elements leftmost-empty rightmost-threat)) (push column forced-move)))))
+                      (leftmost-empty (+ (position "-" col-elements :from-end t :test #'equal) 1))  ; Shifted inside let*
+                      (rightmost-threat (+ leftmost-empty win-minus-one)))
+                 (when (equal n-minus-one (subseq col-elements leftmost-empty rightmost-threat))
+                   (push column forced-move)))))
+    (when valid-row-threats (format t "the valid row is ~a ~%" valid-row-threats))
     (princ forced-move)))
 
+(defun translate-to-col ()
+
+  )
 
 (defun set-column (array col-index new-column)
   (dotimes (i (array-dimension array 0))
