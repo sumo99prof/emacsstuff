@@ -1,3 +1,4 @@
+(defpackage :connect-n (:use :cl))
 (defparameter *move-number* 0)
 (defparameter *piece-names* (list "X" "O"))
 (defparameter *game-board* (make-array '(6 7) :initial-element "-"))
@@ -6,29 +7,28 @@
 (defparameter *win-threshold* 4)
 (defparameter *computer-first* t)
 (defparameter *has-human* t)
-(ql:quickload :array-operations)
-(defpackage :connect-n (:use :cl))
+(defparameter *undo-done* nil)
 
 (defun get-row (row-num)
   (loop for i from (* *col-count* row-num) to (+ (* *col-count* row-num) (- *col-count* 1))
         collect (row-major-aref *game-board* i)))
 
-(defun get-col (col-num) ())
+(defun get-column (array col-index)
+  "Get the column specified by col-index from the 2D array."
+  (loop for i below *row-count* collect (aref *game-board* i col-index)))
 
 ;;Thanks grolter
-(defun can-drop-column (col-num)
-  (loop for i below *row-count*
-        for element = (aref *game-board* i col-num)
-        thereis (equal element "-")))
-
-(defun row-has-space (row-num)
-  (loop for i below *col-count*
-        for element = (aref *game-board* row-num i)
+(defun can-drop-axis (is-col num)
+  (loop for i below (if is-col *row-count* *col-count*)
+        for element = (if is-col (aref *game-board* i num) (aref *game-board* num i))
         thereis (equal element "-")))
 
 (defun pop-checker (col-num move-number)
-  (if (evenp move-number) () ())
-  )
+  (let ((pop-symbol (if (evenp move-number) "X" "O"))
+        (current-col (get-col col-num)))
+    (if (equal pop-symbol (car (last current-col)))
+        (list (append '("-") (butlast current-col)) t)
+        (list current-col nil))))
 
 (defun repeat-element (element count)
   "Repeats an element a specified number of times."
@@ -71,8 +71,8 @@
          (n-row-row (positions human-opp-sym (flatten (cdr (assoc :rows (check-win-vert-horiz win-minus-one)))) :test #'equal))
          (n-row-column (mapcar (lambda (x) (floor (/ x 2))) n-row-column))
          (n-row-row (mapcar (lambda (x) (floor (/ x 2))) n-row-row))
-         (valid-col-threats (remove-if-not #'can-drop-column n-row-column))
-         (valid-row-threats (remove-if-not #'row-has-space n-row-row))
+         (valid-col-threats (remove-if-not (lambda (col) (can-drop-axis t col)) n-row-column))
+         (valid-row-threats (remove-if-not (lambda (row) (can-drop-axis t col)) n-row-row))
          (forced-move '()))
     (when valid-col-threats
       (loop for column in valid-col-threats
@@ -192,7 +192,6 @@
         (progn
           (princ "Incorrect number entered for the win threshold.")
           (init-game-board)))))
-
 
 ;; https://www.geeksforgeeks.org/zigzag-or-diagonal-traversal-of-matrix/
 (defun diagonal-order-pos (matrix row col)
