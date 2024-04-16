@@ -37,7 +37,7 @@
 (defun random-list-picker (possible-cols)
   (when (null possible-cols) (error "Cannot pick from an empty list"))
   (let ((random-index (random (length possible-cols))))
-    (aref possible-cols random-index)))
+    (nth random-index possible-cols)))
 
 (defun positions (item sequence &key (test #'equal))
   "Returns a list of all positions of ITEM in SEQUENCE, using TEST for comparison."
@@ -48,10 +48,10 @@
 
 (defun search-all (subseq seq curr-seq-pos matches)
   "This function returns a list of all positions where subseq appears in seq."
-  (unless (and (>= (length seq) (length subseq)) (search subseq seq))  ;base case
+  (unless (and (>= (length seq) (length subseq)) (search subseq seq :test #'equal))  ;base case
     (return-from search-all matches))
   (let ((subseq-length (length subseq))   
-        (subseq-position (search subseq seq))) 
+        (subseq-position (search subseq seq :test #'equal)))
     (when subseq-position
       (if matches ;when match is null, we have the first match, else accumulate
           (progn 
@@ -66,27 +66,49 @@
   "The goal of this AI is to randomly drop a piece in a column, avoiding immediate vertical or horizontal threats of four in a row."
   (let* ((win-minus-one (- *win-threshold* 1))
          (human-opp-sym (if *computer-first* "O" "X"))
+         (computer-sym (if *computer-first* "X" "O"))
          (n-minus-one (repeat-element human-opp-sym win-minus-one))
          (n-row-column (positions human-opp-sym (flatten (cdr (assoc :columns (check-win-vert-horiz win-minus-one)))) :test #'equal))
          (n-row-row (positions human-opp-sym (flatten (cdr (assoc :rows (check-win-vert-horiz win-minus-one)))) :test #'equal))
          (n-row-column (mapcar (lambda (x) (floor (/ x 2))) n-row-column))
          (n-row-row (mapcar (lambda (x) (floor (/ x 2))) n-row-row))
          (valid-col-threats (remove-if-not (lambda (col) (can-drop-axis t col)) n-row-column))
-         (valid-row-threats (remove-if-not (lambda (row) (can-drop-axis t col)) n-row-row))
+         (valid-row-threats (remove-if-not (lambda (row) (can-drop-axis nil row)) n-row-row))
          (forced-move '()))
-    (when valid-col-threats
-      (loop for column in valid-col-threats
-            do (let* ((col-elements (get-column *game-board* column))
-                      (leftmost-empty (+ (position "-" col-elements :from-end t :test #'equal) 1))  ; Shifted inside let*
-                      (rightmost-threat (+ leftmost-empty win-minus-one)))
-                 (when (equal n-minus-one (subseq col-elements leftmost-empty rightmost-threat))
-                   (push column forced-move)))))
-    (when valid-row-threats (format t "the valid row is ~a ~%" valid-row-threats))
-    (princ forced-move)))
+    (loop for column in valid-col-threats
+          do (let* ((col-elements (get-column *game-board* column))
+                    (leftmost-empty (+ (position "-" col-elements :from-end t :test #'equal) 1))
+                    (rightmost-threat (+ leftmost-empty win-minus-one)))
+               (when (equal n-minus-one (subseq col-elements leftmost-empty rightmost-threat))
+                 (push column forced-move))))
+    (loop for row in valid-row-threats
+          do (setf forced-move (append forced-move (translate-to-col (get-row row) human-opp-sym))))
+    (if forced-move
+        (drop-in-col (random-list-picker forced-move) computer-sym)
+        (drop-in-col (random-list-picker (remove-if-not (lambda (col) (can-drop-axis t col)) (loop for i below *col-count* collect i))) computer-sym))))
 
-(defun translate-to-col ()
-
-  )
+(defun translate-to-col (row-slice sym)
+  "This function translates a row slice to a column based on search patterns and transformations."
+  (let* ((core-list (repeat-element sym (- *win-threshold* 1)))
+         (leftmost-edge (mapcar #'string (append core-list '(-))))
+         (two-threats (mapcar #'string (append '(-) core-list '(-))))
+         (rightmost-edge (mapcar #'string (append '(-) core-list)))
+         (two-threat-row-search (search-all two-threats row-slice 0 '()))
+         (leftmost-edge-search (search-all leftmost-edge row-slice 0 '()))
+         (rightmost-edge-search (search-all rightmost-edge row-slice 0 '()))
+         (leftmost-edge-search (remove-if (lambda (x) (member (- x 1) two-threat-row-search)) leftmost-edge-search))
+         (rightmost-edge-search (remove-if (lambda (x) (member x two-threat-row-search)) rightmost-edge-search))
+         (all-threats '()))
+    (when two-threat-row-search
+      (setq all-threats
+            (append all-threats
+                    (apply #'append
+                           (mapcar (lambda (x) (list x (+ x (- *win-threshold* 1)))) two-threat-row-search)))))
+    (when leftmost-edge-search
+      (setq all-threats (append all-threats (mapcar (lambda (x) (+ x (- *win-threshold* 1))) leftmost-edge-search))))
+    (when rightmost-edge-search
+      (setq all-threats (append all-threats rightmost-edge-search)))
+    all-threats))
 
 (defun set-column (array col-index new-column)
   (dotimes (i (array-dimension array 0))
@@ -125,7 +147,7 @@
                  winner-list))
   winner-list)
 
-  (defun check-win-vert-horiz (w-thresh)
+(defun check-win-vert-horiz (w-thresh)
     "Go through the entire game board with upper, lower, columns, rows etc and make an alist to return"
     (let* ((winner nil)
            (col-vals (loop for col-num below *col-count* collect
