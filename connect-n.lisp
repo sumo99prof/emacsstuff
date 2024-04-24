@@ -1,11 +1,4 @@
-(defpackage :connect-n (:use :cl))
-(defparameter *move-number* 0)
-(defparameter *piece-names* (list "X" "O"))
-(defparameter *game-board* (make-array '(6 7) :initial-element "-"))
-(defparameter *row-count* (array-dimension *game-board* 0))
-(defparameter *col-count* (array-dimension *game-board* 1))
-(defparameter *win-threshold* 4)
-(defparameter *computer-first* t)
+mputer-first* t)
 (defparameter *has-human* t)
 (defparameter *undo-done* nil)
 
@@ -17,6 +10,9 @@
   "Get the column specified by col-index from the 2D array."
   (loop for i below *row-count* collect (aref *game-board* i col-index)))
 
+(defun takeback (human-accepted)
+;  (princ )
+  )
 ;;Thanks grolter
 (defun can-drop-axis (is-col num)
   (loop for i below (if is-col *row-count* *col-count*)
@@ -65,8 +61,8 @@
 (defun random-move-easy ()
   "The goal of this AI is to randomly drop a piece in a column, avoiding immediate vertical or horizontal threats of four in a row."
   (let* ((win-minus-one (- *win-threshold* 1))
-         (human-opp-sym (if *computer-first* "O" "X"))
-         (computer-sym (if *computer-first* "X" "O"))
+         (human-opp-sym (if (evenp *move-number*) "O" "X"))
+         (computer-sym (if (evenp *move-number*) "X" "O"))
          (n-minus-one (repeat-element human-opp-sym win-minus-one))
          (n-row-column (positions human-opp-sym (flatten (cdr (assoc :columns (check-win-vert-horiz win-minus-one)))) :test #'equal))
          (n-row-row (positions human-opp-sym (flatten (cdr (assoc :rows (check-win-vert-horiz win-minus-one)))) :test #'equal))
@@ -85,7 +81,8 @@
           do (setf forced-move (append forced-move (translate-to-col (get-row row) human-opp-sym))))
     (if forced-move
         (drop-in-col (random-list-picker forced-move) computer-sym)
-        (drop-in-col (random-list-picker (remove-if-not (lambda (col) (can-drop-axis t col)) (loop for i below *col-count* collect i))) computer-sym))))
+        (drop-in-col (random-list-picker (remove-if-not (lambda (col) (can-drop-axis t col)) (loop for i below *col-count* collect i))) computer-sym))
+    (incf *move-number*)))
 
 (defun translate-to-col (row-slice sym)
   "This function translates a row slice to a column based on search patterns and transformations."
@@ -113,11 +110,32 @@
 (defun set-column (array col-index new-column)
   (dotimes (i (array-dimension array 0))
     (setf (aref array i col-index) (elt new-column i)))
-   t)
+  t)
 
-(defun get-column (array col-index)
-  "Get the column specified by col-index from the 2D array."
-  (loop for i below *row-count* collect (aref *game-board* i col-index)))
+(defun print-message-clear-screen (message)
+  (format t message)
+  (defun print-board ()
+    (dotimes (i (array-dimension *game-board* 0))
+      (dotimes (j (array-dimension *game-board* 1))
+        (format t "~a " (aref *game-board* i j)))
+      (terpri))
+    (terpri))
+  (print-board)
+  (clear-game))
+
+(defun play-screensaver ()
+  "Loop this screen saver until user quits, when there is a winner clear the board and start over"
+     (loop
+       (when (eql (* *row-count* *col-count*) *move-number*)
+         (print-message-clear-screen "No one has won ~%"))
+       (random-move-easy)
+       (when (find "X" (flatten (check-win-vert-horiz 4)) :test #'equal)
+         (print-message-clear-screen "Player 1 has won ~%"))
+       (when (find "O" (flatten (check-win-vert-horiz 4)) :test #'equal)
+         (print-message-clear-screen "Player 2 has won ~%"))
+       (fresh-line)
+       (print-board)
+       (sleep 2)))
 
 (defun check-maxnum-in-row (elements curr-sym maxnum)
   (unless (< (list-length elements) maxnum)
@@ -151,10 +169,11 @@
     "Go through the entire game board with upper, lower, columns, rows etc and make an alist to return"
     (let* ((winner nil)
            (col-vals (loop for col-num below *col-count* collect
-                           (let ((col-elements (loop for i below *row-count* collect (aref *game-board* i col-num))))
+                           (let ((col-elements (get-column *game-board* col-num)))
                              (loop for checker in *piece-names* collect (check-maxnum-in-row col-elements checker w-thresh)))))
+           (princ col-vals)
            (row-vals (loop for row-num below *row-count* collect
-                           (let ((row-elements (loop for i below *row-count* collect (aref *game-board* row-num i))))
+                           (let ((row-elements (get-row row-num)))
                              (loop for checker in *piece-names* collect (check-maxnum-in-row row-elements checker w-thresh)))))
            (pos-diagonal (diagonal-order-pos *game-board* *row-count* *col-count*))
            (neg-diagonal (diagonal-order-neg *game-board* *row-count* *col-count*))
@@ -169,8 +188,9 @@
          (zero-elem (position "-" col-elements :test #'equal :from-end t)))
     (if zero-elem (progn
                     (setf (elt col-elements zero-elem) player-symbol)
-                    (set-column *game-board* col-num col-elements))
-       nil)))
+                    (set-column *game-board* col-num col-elements)
+                    (setf *game-history* (cons col-num *game-history*)))
+        nil)))
 
 (defun input (prompt)
   (princ prompt)
@@ -181,6 +201,18 @@
         (if (or (string= "QUIT" curr-input) (string= "EXIT" curr-input))
             (progn (princ "Bye") (cl-user::quit))
             (progn (princ "Enter a number, 'quit', or 'exit' please") (input ""))))))
+
+(defun clear-game ()
+  (setf *move-number* 0)
+  (setf *piece-names* (list "X" "O"))
+  (setf *game-board* (make-array '(6 7) :initial-element "-"))
+  (setf *row-count* (array-dimension *game-board* 0))
+  (setf *col-count* (array-dimension *game-board* 1))
+  (setf *game-history* '())
+  (setf *win-threshold* 4)
+  (setf *computer-first* t)
+  (setf *has-human* t)
+  (setf *undo-done* nil))
 
 (defun game-loop ()
      (princ "Valid ones are ")
@@ -206,10 +238,10 @@
          (win-threshold (input (format nil "What is the win threshold (must be at least 3 and at most ~a in a row)?" max-win-input))))
     (if (and (>= max-win-input 3) (<= win-threshold max-win-input))
         (progn
-          (defparameter *game-board* (make-array (list rows cols) :initial-element :-))
-          (defparameter *row-count* (array-dimension *game-board* 0))
-          (defparameter *col-count* (array-dimension *game-board* 1))
-          (defparameter *win-threshold* win-threshold)
+          (setf *game-board* (make-array (list rows cols) :initial-element :-)
+                (*row-count* (array-dimension *game-board* 0))
+                (*col-count* (array-dimension *game-board* 1))
+                (*win-threshold* win-threshold))
           (game-loop))
         (progn
           (princ "Incorrect number entered for the win threshold.")
