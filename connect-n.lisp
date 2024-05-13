@@ -11,6 +11,7 @@
 (defparameter *undo-done* nil)
 
 (defun get-row (row-num)
+  "Row major access"
   (loop for i from (* *col-count* row-num) to (+ (* *col-count* row-num) (- *col-count* 1))
         collect (row-major-aref *game-board* i)))
 
@@ -28,15 +29,16 @@
     (set-column *game-board* col-num col-elements)))
 
 (defun takeback (human-accepted)
+  "Call the reverse move function and remove the last two from history. This is a syncronous game"
   (unless (< (length *game-history*) 2)
     (let* ((first-two (subseq *game-history* 0 2))
            (rest-history (subseq *game-history* 2)))
       (mapcar #'reverse-move first-two)
       (setf *game-history* rest-history))))
 
-
 ;;Thanks grolter
 (defun can-drop-axis (is-col num)
+  "Determine if a row or column is full, nil for row, t for col"
   (loop for i below (if is-col *row-count* *col-count*)
         for element = (if is-col (aref *game-board* i num) (aref *game-board* num i))
         thereis (equal element "-")))
@@ -104,8 +106,7 @@
           do (setf forced-move (append forced-move (translate-to-col (get-row row) human-opp-sym))))
     (if forced-move
         (drop-in-col (random-list-picker forced-move) computer-sym)
-        (drop-in-col (random-list-picker (remove-if-not (lambda (col) (can-drop-axis t col)) (loop for i below *col-count* collect i))) computer-sym))
-    (incf *move-number*)))
+        (drop-in-col (random-list-picker (remove-if-not (lambda (col) (can-drop-axis t col)) (loop for i below *col-count* collect i))) computer-sym))))
 
 (defun translate-to-col (row-slice sym)
   "This function translates a row slice to a column based on search patterns and transformations."
@@ -239,7 +240,6 @@
   (setf *undo-done* nil))
 
 (defun win-dialog ()
-
   )
 
 (defun game-loop ()
@@ -259,20 +259,26 @@
     (game-loop)))
 
 (defun init-game-board ()
-  (let* ((rows (input "How many rows do you desire?"))
-         (cols (input "How many columns do you desire?"))
-         (max-win-input (1- (min rows cols)))
-         (win-threshold (input (format nil "What is the win threshold (must be at least 3 and at most ~a in a row)?" max-win-input))))
-    (if (and (>= max-win-input 3) (<= win-threshold max-win-input))
-        (progn
-          (setf *game-board* (make-array (list rows cols) :initial-element :-)
-                (*row-count* (array-dimension *game-board* 0))
-                (*col-count* (array-dimension *game-board* 1))
-                (*win-threshold* win-threshold))
-          (game-loop))
-        (progn
-          (princ "Incorrect number entered for the win threshold.")
-          (init-game-board)))))
+  (let* ((rows (read-string (format nil "How many rows do you desire? "))))  ; Use read-string for numeric input
+    (cols (read-string (format nil "How many columns do you desire? "))))
+  (max-win-input (1- (min rows cols)))
+  (win-threshold (read-string (format nil "What is the win threshold (must be at least 3 and at most ~a in a row)?" max-win-input))))
+(opponent-type (read-string "How many players? (0: Screensaver, 1: AI, 2: Human) ")))) ; Clarify choices
+(cond ((= opponent-type 0) (play-screensaver))
+      ((= opponent-type 1) (princ "Play against AI"))
+      ((= opponent-type 2) (game-loop))
+      (t (princ "Invalid input. Enter 0 for Screensaver, 1 for AI, or 2 for Human")))  ; Clearer error message
+(if (and (>= max-win-input 3) (<= win-threshold max-win-input))
+    (progn
+      (setf *game-board* (make-array (list rows cols) :initial-element :-)
+            (*row-count* (array-dimension *game-board* 0))
+            (*col-count* (array-dimension *game-board* 1))
+            (*win-threshold* win-threshold))
+      (game-loop))
+    (progn
+      (princ "Incorrect win threshold. Please enter a value between 3 and " max-win-input)  ; More informative error
+      (init-game-board)))))  ; Recursive call on invalid input
+
 
 ;; https://www.geeksforgeeks.org/zigzag-or-diagonal-traversal-of-matrix/
 (defun diagonal-order-pos (matrix row col)
