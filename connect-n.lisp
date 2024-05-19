@@ -96,12 +96,8 @@
          (valid-col-threats (remove-if-not (lambda (col) (can-drop-axis t col)) n-row-column))
          (valid-row-threats (remove-if-not (lambda (row) (can-drop-axis nil row)) n-row-row))
          (forced-move '()))
-     (loop for column in valid-col-threats
-          do (let* ((col-elements (get-column *game-board* column))
-                    (leftmost-empty (+ (position "-" col-elements :from-end t :test #'equal) 1))
-                    (rightmost-threat (+ leftmost-empty win-minus-one)))
-               (when (equal n-minus-one (subseq col-elements leftmost-empty rightmost-threat))
-                 (push column forced-move))))
+         "Add the column iff the last three elements match the human win-number - 1"
+         (append forced-move  (remove-if-not (lambda(x) ((equalp (last (get-column *game-board* x) win-minus-one) n-minus-one))) valid-col-threats))
     (loop for row in valid-row-threats
           do (setf forced-move (append forced-move (translate-to-col (get-row row) human-opp-sym))))
     (if forced-move
@@ -239,8 +235,55 @@
   (setf *has-human* t)
   (setf *undo-done* nil))
 
-(defun win-dialog ()
-  )
+;; (defun win-dialog (result)
+;;  "Terminate the current game with RESULT."
+;;  (message
+;;   (cond
+;;     ((eq result 'emacs-won)
+;;      (setq number-of-emacs-wins (1+ number-of-emacs-wins))
+;;      (cond ((< *move-number* 20)
+;;             "This was a REALLY QUICK win.")
+;;            (gomoku-human-refused-draw
+;;             "I won... Too bad you refused my offer of a draw !")
+;;            (gomoku-human-took-back
+;;             "I won... Taking moves back will not help you !")
+;;            ((not gomoku-emacs-played-first)
+;;             "I won... Playing first did not help you much !")
+;;            ((and (zerop gomoku-number-of-human-wins)
+;;                  (zerop gomoku-number-of-draws)
+;;                  (> gomoku-number-of-emacs-wins 1))
+;;             "I'm becoming tired of winning...")
+;;            ("I won.")))
+;;     ((eq result 'human-won)
+;;      (setq gomoku-number-of-human-wins (1+ gomoku-number-of-human-wins))
+;;      (concat "OK, you won this one."
+;;              (cond
+;;                (gomoku-human-took-back
+;;                 " I, for one, never take my moves back...")
+;;                (gomoku-emacs-played-first
+;;                 ".. so what ?")
+;;                ("  Now, let me play first just once."))))
+;;     ((eq result 'human-resigned)
+;;      (setq gomoku-number-of-emacs-wins (1+ gomoku-number-of-emacs-wins))
+;;      "So you resign.  That's just one more win for me.")
+;;     ((eq result 'nobody-won)
+;;      (setq gomoku-number-of-draws (1+ gomoku-number-of-draws))
+;;      (concat "This is a draw.  "
+;;              (cond
+;;                (gomoku-human-took-back
+;;                 "I, for one, never take my moves back...")
+;;                (gomoku-emacs-played-first
+;;                 "Just chance, I guess.")
+;;                ("Now, let me play first just once."))))
+;;     ((eq result 'draw-agreed)
+;;      (setq gomoku-number-of-draws (1+ gomoku-number-of-draws))
+;;      (concat "Draw agreed.  "
+;;              (cond
+;;                (gomoku-human-took-back
+;;                 "I, for one, never take my moves back...")
+;;                (gomoku-emacs-played-first
+;;                 "You were lucky.")
+;;                ("Now, let me play first just once.")))))))
 
 (defun game-loop ()
   (princ "Valid ones are ")
@@ -263,7 +306,7 @@
     (cols (read-string (format nil "How many columns do you desire? "))))
   (max-win-input (1- (min rows cols)))
   (win-threshold (read-string (format nil "What is the win threshold (must be at least 3 and at most ~a in a row)?" max-win-input))))
-(opponent-type (read-string "How many players? (0: Screensaver, 1: AI, 2: Human) ")))) ; Clarify choices
+  (opponent-type (read-string "How many players? (0: Screensaver, 1: AI, 2: Human): ")))) ; Clarify choices
 (cond ((= opponent-type 0) (play-screensaver))
       ((= opponent-type 1) (princ "Play against AI"))
       ((= opponent-type 2) (game-loop))
