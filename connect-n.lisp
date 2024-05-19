@@ -96,8 +96,8 @@
          (valid-col-threats (remove-if-not (lambda (col) (can-drop-axis t col)) n-row-column))
          (valid-row-threats (remove-if-not (lambda (row) (can-drop-axis nil row)) n-row-row))
          (forced-move '()))
-         "Add the column iff the last three elements match the human win-number - 1"
-         (append forced-move  (remove-if-not (lambda(x) ((equalp (last (get-column *game-board* x) win-minus-one) n-minus-one))) valid-col-threats))
+    "Add the column iff the last three elements match the human win-number - 1"
+         (setf forced-move (append forced-move (remove-if-not (lambda(x) (equalp (last (get-column *game-board* x) win-minus-one) n-minus-one)) valid-col-threats)))
     (loop for row in valid-row-threats
           do (setf forced-move (append forced-move (translate-to-col (get-row row) human-opp-sym))))
     (if forced-move
