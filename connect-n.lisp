@@ -1,4 +1,4 @@
-(defpackage :connect-n (:use :cl))
+n(defpackage :connect-n (:use :cl))
 (defparameter *move-number* 0)
 (defparameter *piece-names* (list "X" "O"))
 (defparameter *game-board* (make-array '(6 7) :initial-element "-"))
@@ -7,7 +7,8 @@
 (defparameter *game-history* '())
 (defparameter *win-threshold* 4)
 (defparameter *computer-first* t)
-(defparameter *has-human* t)
+(defparameter *has-computer* t)
+(defparameter *has-human* nil)
 (defparameter *undo-done* nil)
 
 (defun get-row (row-num)
@@ -29,12 +30,15 @@
     (set-column *game-board* col-num col-elements)))
 
 (defun takeback (human-accepted)
-  "Call the reverse move function and remove the last two from history. This is a syncronous game"
+  "Call the reverse move function and remove the last two from history. This is a synchronous game."
   (unless (< (length *game-history*) 2)
     (let* ((first-two (subseq *game-history* 0 2))
            (rest-history (subseq *game-history* 2)))
-      (mapcar #'reverse-move first-two)
-      (setf *game-history* rest-history))))
+      (if (or (and human-accepted *has-human*) *has-computer)
+          (progn
+            (mapcar #'reverse-move first-two)
+            (setf *game-history* rest-history))
+          (princ "The takeback has been rejected. Sorry")))))
 
 ;;Thanks grolter
 (defun can-drop-axis (is-col num)
@@ -214,14 +218,22 @@
         nil)))
 
 (defun input (prompt)
+  "Prompt the user for input and handle specific commands."
   (princ prompt)
   (terpri)
   (let ((curr-input (read)))
-    (if (numberp curr-input)
-        curr-input
-        (if (or (string= "QUIT" curr-input) (string= "EXIT" curr-input))
-            (progn (princ "Bye") (cl-user::quit))
-            (progn (princ "Enter a number, 'quit', or 'exit' please") (input ""))))))
+    (cond
+      ((numberp curr-input) curr-input)
+      ((or (string= "QUIT" curr-input) (string= "EXIT" curr-input))
+       (princ "Bye")
+       (cl-user::quit))
+      ((string= "TAKEBACK" curr-input)
+       (princ "Implement function here"))
+      ((string= "POP" curr-input)
+       (princ "Implement function here"))
+      (t
+       (princ "Enter a number, 'quit', or 'exit' please")
+       (input prompt)))))
 
 (defun clear-game ()
   (setf *move-number* 0)
