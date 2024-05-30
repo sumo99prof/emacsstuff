@@ -1,4 +1,4 @@
-n(defpackage :connect-n (:use :cl))
+(defpackage :connect-n (:use :cl))
 (defparameter *move-number* 0)
 (defparameter *piece-names* (list "X" "O"))
 (defparameter *game-board* (make-array '(6 7) :initial-element "-"))
