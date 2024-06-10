@@ -34,7 +34,7 @@
   (unless (< (length *game-history*) 2)
     (let* ((first-two (subseq *game-history* 0 2))
            (rest-history (subseq *game-history* 2)))
-      (if (or (and human-accepted *has-human*) *has-computer)
+      (if (or (and human-accepted *has-human*) *has-computer*)
           (progn
             (mapcar #'reverse-move first-two)
             (setf *game-history* rest-history))
