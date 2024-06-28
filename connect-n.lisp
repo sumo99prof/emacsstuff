@@ -7,9 +7,10 @@
 (defparameter *game-history* '())
 (defparameter *win-threshold* 4)
 (defparameter *computer-first* t)
-(defparameter *has-computer* t)
+(defparameter *has-computer* t) ;;different game loop?
 (defparameter *has-human* nil)
 (defparameter *undo-done* nil)
+;;need a special flag for takebacks and pops
 
 (defun get-row (row-num)
   "Row major access"
@@ -23,18 +24,20 @@
 (defun reverse-move (col-num)
   "Reverse the last move in the specified column. Column must have at least one X or O"
   (let* ((col-elements (get-column *game-board* col-num))
-         (last-dropped-elem (position "-" col-elements :test #'equal :from-end t)))
+         (last-dropped-elem (position "-" col-elements :test #'equal :from-end t))) ;this can be null if the whole column is full
+    ;; unless atom col-num
+    ;; car blah
     (if last-dropped-elem
         (setf (nth (+ last-dropped-elem 1) col-elements) "-")
         (setf (car col-elements) "-"))
     (set-column *game-board* col-num col-elements)))
 
-(defun takeback (human-accepted)
+(defun takeback (human-accepted &optional has-computer)
   "Call the reverse move function and remove the last two from history. This is a synchronous game."
   (unless (< (length *game-history*) 2)
     (let* ((first-two (subseq *game-history* 0 2))
            (rest-history (subseq *game-history* 2)))
-      (if (or (and human-accepted *has-human*) *has-computer*)
+      (if (or (and human-accepted *has-human*) has-computer)
           (progn
             (mapcar #'reverse-move first-two)
             (setf *game-history* rest-history))
@@ -47,13 +50,14 @@
         for element = (if is-col (aref *game-board* i num) (aref *game-board* num i))
         thereis (equal element "-")))
 
-(defun pop-checker (col-num move-number)
+(defun pop-column (col-num move-number)
   "drop the very last element if it matches the players turn. Shift everything down by one"
   (let ((pop-symbol (if (evenp move-number) "X" "O"))
         (current-col (get-column *game-board* col-num)))
-    (if (equal pop-symbol (car (last current-col)))
-        (list (append '("-") (butlast current-col)) t)
-        (list current-col nil))))
+    (when (equal pop-symbol (car (last current-col)))
+      (set-column *game-board* col-num (append '("-") (butlast current-col)))
+      ;;append to game history
+      (incf *move-number*))))
 
 (defun repeat-element (element count)
   "Repeats an element a specified number of times."
@@ -217,23 +221,46 @@
                     (incf *move-number*))
         nil)))
 
+(defun init-game-board ()
+  "Initialize the game board with user-defined dimensions and settings."
+  (let* ((rows (parse-integer (read-string "How many rows do you desire? ")))
+         (cols (parse-integer (read-string "How many columns do you desire? ")))
+         (max-win-input (1- (min rows cols)))
+         (win-threshold (parse-integer
+                         (read-string (format nil "What is the win threshold (must be at least 3 and at most ~a in a row)? " max-win-input))))
+         (opponent-type (parse-integer (read-string "How many players? (0: Screensaver, 1: AI, 2: Human): "))))
+    (if (and (>= win-threshold 3) (<= win-threshold max-win-input))
+        (progn
+          (setf *game-board* (make-array (list rows cols) :initial-element "-")
+                *row-count* rows
+                *col-count* cols
+                *win-threshold* win-threshold)
+          (cond ((= opponent-type 0) (play-screensaver))
+                ((= opponent-type 1) (princ "Play against AI") (game-loop-computer))
+                ((= opponent-type 2) (game-loop))
+                (t (progn (princ "Invalid input. Enter 0 for Screensaver, 1 for AI, or 2 for Human.")
+                          (init-game-board)))))
+        (progn
+          (princ (format nil "Incorrect win threshold. Please enter a value between 3 and ~a.~%" max-win-input))
+          (init-game-board)))))
+
 (defun input (prompt)
   "Prompt the user for input and handle specific commands."
   (princ prompt)
   (terpri)
   (let ((curr-input (read)))
     (cond
-      ((numberp curr-input) curr-input)
+      ((numberp curr-input)
+       (return-from input curr-input))
       ((or (string= "QUIT" curr-input) (string= "EXIT" curr-input))
        (princ "Bye")
        (cl-user::quit))
       ((string= "TAKEBACK" curr-input)
        (princ "Implement function here"))
       ((string= "POP" curr-input)
-       (princ "Implement function here"))
-      (t
-       (princ "Enter a number, 'quit', or 'exit' please")
-       (input prompt)))))
+       (pop-column (input "Enter the column to pop: ") *move-number*))
+      (t (princ "Enter a number, 'quit', or 'exit', 'takeback' or 'pop' please")
+         (input prompt)))))
 
 (defun clear-game ()
   (setf *move-number* 0)
@@ -297,7 +324,9 @@
 ;;                 "You were lucky.")
 ;;                ("Now, let me play first just once.")))))))
 
-(defun game-loop ()
+;; game-loop-computer
+
+(defun game-loop-human ()
   (princ "Valid ones are ")
   (terpri)
   (princ (remove-if-not (lambda (x) (can-drop-axis t x)) (loop for n below *col-count* collect n)))
@@ -313,27 +342,21 @@
       (format t "Player two has won! ~%"))
     (game-loop)))
 
-(defun init-game-board ()
-  (let* ((rows (read-string (format nil "How many rows do you desire? "))))  ; Use read-string for numeric input
-    (cols (read-string (format nil "How many columns do you desire? "))))
-  (max-win-input (1- (min rows cols)))
-  (win-threshold (read-string (format nil "What is the win threshold (must be at least 3 and at most ~a in a row)?" max-win-input))))
-  (opponent-type (read-string "How many players? (0: Screensaver, 1: AI, 2: Human): ")))) ; Clarify choices
-(cond ((= opponent-type 0) (play-screensaver))
-      ((= opponent-type 1) (princ "Play against AI"))
-      ((= opponent-type 2) (game-loop))
-      (t (princ "Invalid input. Enter 0 for Screensaver, 1 for AI, or 2 for Human")))  ; Clearer error message
-(if (and (>= max-win-input 3) (<= win-threshold max-win-input))
-    (progn
-      (setf *game-board* (make-array (list rows cols) :initial-element :-)
-            (*row-count* (array-dimension *game-board* 0))
-            (*col-count* (array-dimension *game-board* 1))
-            (*win-threshold* win-threshold))
-      (game-loop))
-    (progn
-      (princ "Incorrect win threshold. Please enter a value between 3 and " max-win-input)  ; More informative error
-      (init-game-board)))))  ; Recursive call on invalid input
-
+(defun game-loop-computer (&optional ai-level ai-first)
+  (princ "Valid ones are ")
+  (terpri)
+  (princ (remove-if-not (lambda (x) (can-drop-axis t x)) (loop for n below *col-count* collect n)))
+  (let ((current-column (input "Which column to drop into? ")))
+    (terpri)
+    (if (evenp *move-number*)
+        (drop-in-col current-column "X")
+        (drop-in-col current-column "O"))
+    (princ *game-board*)
+    (when (find "X" (flatten (check-win-vert-horiz 4)) :test #'equal)
+      (format t "Player one has won! ~%"))
+    (when (find "O" (flatten (check-win-vert-horiz 4)) :test #'equal)
+      (format t "Player two has won! ~%"))
+    (game-loop-computer ai-level ai-first)))
 
 ;; https://www.geeksforgeeks.org/zigzag-or-diagonal-traversal-of-matrix/
 (defun diagonal-order-pos (matrix row col)
