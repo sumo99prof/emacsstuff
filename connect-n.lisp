@@ -7,9 +7,10 @@
 (defparameter *game-history* '())
 (defparameter *win-threshold* 4)
 (defparameter *computer-first* t)
-(defparameter *has-computer* t) ;;different game loop?
+(defparameter *has-computer* t) ;;different game loop, needed for AI levels (in the future)
 (defparameter *has-human* nil)
 (defparameter *undo-done* nil)
+(defparameter *special-move* nil)
 ;;need a special flag for takebacks and pops
 
 (defun get-row (row-num)
@@ -342,7 +343,7 @@
       (format t "Player two has won! ~%"))
     (game-loop)))
 
-(defun game-loop-computer (&optional ai-level ai-first)
+(defun game-loop-computer (&optional ai-level ai-first) 
   (princ "Valid ones are ")
   (terpri)
   (princ (remove-if-not (lambda (x) (can-drop-axis t x)) (loop for n below *col-count* collect n)))
