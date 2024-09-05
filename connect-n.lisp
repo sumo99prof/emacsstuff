@@ -238,7 +238,7 @@
                 *win-threshold* win-threshold)
           (cond ((= opponent-type 0) (play-screensaver))
                 ((= opponent-type 1) (princ "Play against AI") (game-loop-computer))
-                ((= opponent-type 2) (game-loop))
+                ((= opponent-type 2) (game-loop-human))
                 (t (progn (princ "Invalid input. Enter 0 for Screensaver, 1 for AI, or 2 for Human.")
                           (init-game-board)))))
         (progn
@@ -341,7 +341,7 @@
       (format t "Player one has won! ~%"))
     (when (find "O" (flatten (check-win-vert-horiz 4)) :test #'equal)
       (format t "Player two has won! ~%"))
-    (game-loop)))
+    ( game-loop-human)))
 
 (defun game-loop-computer (&optional ai-level ai-first) 
   (princ "Valid ones are ")
